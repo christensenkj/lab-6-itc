@@ -63,11 +63,11 @@
 *********************************************************************************************************
 */
 
-#define  EX_MAIN_START_TASK_PRIO              	21u
-#define  EX_MAIN_BUTTON_INPUT_TASK_PRIO         22u
-#define  EX_MAIN_SLIDER_INPUT_TASK_PRIO         23u
-#define  EX_MAIN_LED_OUTPUT_TASK_PRIO           24u
-#define  EX_MAIN_IDLE_TASK_PRIO              	25u
+#define  EX_MAIN_START_TASK_PRIO              	20u
+#define  EX_MAIN_LED_OUTPUT_TASK_PRIO           21u
+#define  EX_MAIN_SLIDER_INPUT_TASK_PRIO         22u
+#define  EX_MAIN_BUTTON_INPUT_TASK_PRIO         23u
+#define  EX_MAIN_IDLE_TASK_PRIO              	24u
 
 #define  EX_MAIN_START_TASK_STK_SIZE         	512u
 #define  EX_MAIN_BUTTON_INPUT_TASK_STK_SIZE		512u
@@ -125,7 +125,7 @@ enum btn_flag_enum {
 	btn_1_pressed,
 	btn_both_pressed,
 };
-
+/* Create enum for messages to be passed by peripheral tasks */
 enum led_codes {
 	btn0,
 	btn1,
@@ -134,7 +134,7 @@ enum led_codes {
 	sld1,
 	sld_none,
 };
-
+// Debug variable purely for debug purposes
 int debug_flag;
 
 /*
@@ -144,14 +144,15 @@ int debug_flag;
 *********************************************************************************************************
 *********************************************************************************************************
 */
-
+// task main functions
 static  void  Ex_MainStartTask (void  *p_arg);
 static  void  Ex_MainIdleTask (void  *p_arg);
 static  void  Ex_MainButtonInputTask (void  *p_arg);
 static  void  Ex_MainSliderInputTask (void  *p_arg);
 static  void  Ex_MainLedOutputTask (void  *p_arg);
-
+// callback function for OSTimer
 static void MyCallback(OS_TMR p_tmr, void *p_arg);
+// led driver function
 static void led_drive(bool PB0_status, bool PB1_status, uint8_t slider_pos);
 
 
@@ -265,8 +266,8 @@ static  void  Ex_MainStartTask (void  *p_arg)
                                                                 /* ... the platform manager at this moment.             */
     // initialize common modules for all tasks
     cmu_open();
-
-    OSTaskCreate(&Ex_MainIdleTaskTCB,                          /* Create the Idle Task.                               */
+    /* Create the Idle Task.                               */
+    OSTaskCreate(&Ex_MainIdleTaskTCB,
                  "Ex Main Idle Task",
                   Ex_MainIdleTask,
                   DEF_NULL,
@@ -279,8 +280,8 @@ static  void  Ex_MainStartTask (void  *p_arg)
                   DEF_NULL,
                  (OS_OPT_TASK_STK_CLR),
                  &err);
-
-    OSTaskCreate(&Ex_MainButtonInputTaskTCB,                          /* Create the Button Input Task.                               */
+    /* Create the Button Input Task.                               */
+    OSTaskCreate(&Ex_MainButtonInputTaskTCB,
                  "Ex Main Button Input Task",
                   Ex_MainButtonInputTask,
                   DEF_NULL,
@@ -293,8 +294,8 @@ static  void  Ex_MainStartTask (void  *p_arg)
                   DEF_NULL,
                  (OS_OPT_TASK_STK_CLR),
                  &err);
-
-    OSTaskCreate(&Ex_MainSliderInputTaskTCB,                          /* Create the Slider Input Task.                               */
+    /* Create the Slider Input Task.                               */
+    OSTaskCreate(&Ex_MainSliderInputTaskTCB,
                  "Ex Main SliderInput Task",
                   Ex_MainSliderInputTask,
                   DEF_NULL,
@@ -307,8 +308,8 @@ static  void  Ex_MainStartTask (void  *p_arg)
                   DEF_NULL,
                  (OS_OPT_TASK_STK_CLR),
                  &err);
-
-    OSTaskCreate(&Ex_MainLedOutputTaskTCB,                          /* Create the Led Output Task.                               */
+    /* Create the Led Output Task.                               */
+    OSTaskCreate(&Ex_MainLedOutputTaskTCB,
                  "Ex Main Led Output Task",
                   Ex_MainLedOutputTask,
                   DEF_NULL,
@@ -321,24 +322,24 @@ static  void  Ex_MainStartTask (void  *p_arg)
                   DEF_NULL,
                  (OS_OPT_TASK_STK_CLR),
                  &err);
-
+    // Create the message queue
     OSQCreate((OS_Q	*)
     		&queue,
 			(CPU_CHAR *)"Message Queue",
 			(OS_MSG_QTY)4,
 			(RTOS_ERR *)&err);
-
+    // Create the event flag
     OSFlagCreate((OS_FLAG_GRP *)
     		&flg,
 			(CPU_CHAR *) "button flag",
 			(OS_FLAGS) 0,
 			(RTOS_ERR *)&err);
-
+    // Create the semaphore
     OSSemCreate ((OS_SEM *) &sem,
             (CPU_CHAR *) "Slider Semaphore",
             (OS_SEM_CTR) 0,
             (RTOS_ERR *) &err);
-
+    // Create the OSTimer
     OSTmrCreate ((OS_TMR *) &tmr,
 			(CPU_CHAR *) "OS Timer",
 			(OS_TICK) 10,
@@ -347,7 +348,7 @@ static  void  Ex_MainStartTask (void  *p_arg)
 			(OS_TMR_CALLBACK_PTR) &MyCallback,
 			(void *) 0,
 			(RTOS_ERR *) &err);
-
+    // Start the timer
     OSTmrStart ((OS_TMR *) &tmr, (RTOS_ERR *) &err);
 
     while (DEF_ON) {
@@ -420,6 +421,7 @@ static  void  Ex_MainButtonInputTask (void  *p_arg)
                                                                 /* ... the platform manager at this moment.             */
     buttons_setup();
     while (DEF_ON) {
+    	// check the event flag
     	flag = OSFlagPend ((OS_FLAG_GRP  *) &flg,
 			(OS_FLAGS)      0x03,
 			(OS_TICK)       0,
@@ -427,6 +429,7 @@ static  void  Ex_MainButtonInputTask (void  *p_arg)
 			(CPU_TS *)      NULL,
 			(RTOS_ERR *)    &err);
     	debug_flag = flag;
+    	// determine the status of the buttons based on the flag
     	switch(flag) {
     		case btn_none_pressed:
     			msg = btn_none;
@@ -443,7 +446,8 @@ static  void  Ex_MainButtonInputTask (void  *p_arg)
     		default:
     			break;
     	}
-//    	OSQPost ((OS_Q *) &queue, &msg, (OS_MSG_SIZE) sizeof(msg), (OS_OPT) OS_OPT_POST_FIFO, (RTOS_ERR *) &err);
+    	// send message to the queue
+    	OSQPost ((OS_Q *) &queue, &msg, (OS_MSG_SIZE) sizeof(msg), (OS_OPT) OS_OPT_POST_FIFO, (RTOS_ERR *) &err);
         /* Delay Start Task execution for                       */
 		OSTimeDly( 10, OS_OPT_TIME_DLY, &err);
 		/*   Check error code.                                  */
@@ -479,8 +483,11 @@ static  void  Ex_MainSliderInputTask (void  *p_arg)
                                                                 /* ... the platform manager at this moment.             */
     slider_setup();
     while (DEF_ON) {
+    	// pend on the semaphore that is to be posted by the OSTimer counter handler
         OSSemPend (&sem, 0, OS_OPT_PEND_NON_BLOCKING, NULL, &err);
+        // retrieve the slider status
         slider_position(&slider_pos);
+        // determine the message to be sent
         if (slider_pos == INACTIVE) {
         	msg = sld_none;
         }
@@ -490,6 +497,7 @@ static  void  Ex_MainSliderInputTask (void  *p_arg)
         else {
         	msg = sld1;
         }
+        // send message to the queue
         OSQPost ((OS_Q *) &queue, &msg, (OS_MSG_SIZE) sizeof(msg), (OS_OPT) OS_OPT_POST_FIFO, (RTOS_ERR *) &err);
         /* Delay for 100 ms                      */
 		OSTimeDly( 10, OS_OPT_TIME_DLY, &err);
@@ -527,7 +535,7 @@ static  void  Ex_MainLedOutputTask (void  *p_arg)
     gpio_open();
     while (DEF_ON) {
 
-
+    	// Receive the message from the head of the queue
     	msg = OSQPend ((OS_Q * ) &queue,
 			(OS_TICK)      0,
 			(OS_OPT)       OS_OPT_PEND_BLOCKING,
@@ -535,6 +543,7 @@ static  void  Ex_MainLedOutputTask (void  *p_arg)
 			(CPU_TS *)     NULL,
 			(RTOS_ERR *)   &err);
 
+    	// update peripheral statuses locally depending on the message received
     	if (*msg == btn_none) {
     		PB0_status = 0;
     		PB1_status = 0;
@@ -556,12 +565,13 @@ static  void  Ex_MainLedOutputTask (void  *p_arg)
     	else if (*msg == sld1) {
     		slider_pos = RIGHT;
     	}
-
-    	led_drive(PB0_status, PB1_status, slider_pos);                                                        /*   Check error code.                                  */
-        /* Delay Start Task execution for                       */
-		OSTimeDly( 10,                                        /*   1000 OS Ticks                                      */
-					OS_OPT_TIME_DLY,                             /*   from now.                                          */
+    	// drive the LEDs based on the local statuses
+    	led_drive(PB0_status, PB1_status, slider_pos);
+        /* Delay Start Task execution for  */
+		OSTimeDly( 10,
+					OS_OPT_TIME_DLY,
 					&err);
+		/*   Check error code.                                  */
         APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), ;);
     }
 }
@@ -572,12 +582,12 @@ static  void  Ex_MainLedOutputTask (void  *p_arg)
  *   Callback function for kernel timer.
  *
  * @details
- * 	 Utilizes global variables slider_pos, PB0_status, and PB1_status.
- * 	 Pushbutton operate on an XOR basis, and slider operates similarly.
- * 	 Pushbuttons and slider operate on OR basis.
+ * 	 Posts on a semaphore shared by the slider input task. This function is not
+ * 	 called until the OSTimer reaches a 10 ms timeout. This function is called
+ * 	 periodically every 10 ms to signal the slider input task to execute.
  *
  * @note
- *   This function is called every time the LEDs should be set.
+ *   This function is called every time the OSTimer counts 10 ms.
  *
  ******************************************************************************/
 static void MyCallback (OS_TMR p_tmr, void *p_arg) {
