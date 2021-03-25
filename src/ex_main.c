@@ -122,7 +122,9 @@ static OS_TMR		tmr;
 enum btn_flag_enum {
 	btn_none_pressed,
 	btn_0_pressed,
+	btn_0_unpressed,
 	btn_1_pressed,
+	btn_1_unpressed,
 	btn_both_pressed,
 };
 /* Create enum for messages to be passed by peripheral tasks */
@@ -423,24 +425,57 @@ static  void  Ex_MainButtonInputTask (void  *p_arg)
     while (DEF_ON) {
     	// check the event flag
     	flag = OSFlagPend ((OS_FLAG_GRP  *) &flg,
-			(OS_FLAGS)      0x03,
+			(OS_FLAGS)      0x0F,
 			(OS_TICK)       0,
-			(OS_OPT)        OS_OPT_PEND_FLAG_SET_ANY + OS_OPT_PEND_NON_BLOCKING,
+			(OS_OPT)        OS_OPT_PEND_FLAG_SET_ANY + OS_OPT_PEND_BLOCKING,
 			(CPU_TS *)      NULL,
 			(RTOS_ERR *)    &err);
     	debug_flag = flag;
     	// determine the status of the buttons based on the flag
     	switch(flag) {
-    		case btn_none_pressed:
+    		case 0b00000000:
     			msg = btn_none;
 				break;
-    		case btn_0_pressed:
+    		case 0b00000001:
     			msg = btn0;
     			break;
-    		case btn_1_pressed:
+    		case 0b00000010:
+    			msg = btn_none;
+    			break;
+    		case 0b00000100:
     			msg = btn1;
     			break;
-    		case btn_both_pressed:
+    		case 0b00000101:
+    			msg = btn_none;
+    			break;
+    		case 0b00000110:
+    			msg = btn1;
+    			break;
+    		case 0b00000111:
+    			msg = btn1;
+    			break;
+    		case 0b00001000:
+    			msg = btn_none;
+    			break;
+    		case 0b00001001:
+    			msg = btn0;
+    			break;
+    		case 0b00001010:
+    			msg = btn_none;
+    			break;
+    		case 0b00001011:
+    			msg = btn_none;
+    			break;
+    		case 0b00001100:
+    			msg = btn_none;
+    			break;
+    		case 0b00001101:
+    			msg = btn0;
+    			break;
+    		case 0b00001110:
+    			msg = btn_none;
+    			break;
+    		case 0b00001111:
     			msg = btn_none;
     			break;
     		default:
@@ -699,6 +734,10 @@ void GPIO_EVEN_IRQHandler(void)
 	poll_PB0(&PB0_status);
 	if (PB0_status) {
 		OSFlagPost ((OS_FLAG_GRP *) &flg,
+			(OS_FLAGS)      0x02,
+			(OS_OPT)        OS_OPT_POST_FLAG_CLR,
+			(RTOS_ERR *)	&err);
+		OSFlagPost ((OS_FLAG_GRP *) &flg,
 			(OS_FLAGS)      0x01,
 			(OS_OPT)        OS_OPT_POST_FLAG_SET,
 			(RTOS_ERR *)	&err);
@@ -707,6 +746,10 @@ void GPIO_EVEN_IRQHandler(void)
 		OSFlagPost ((OS_FLAG_GRP *) &flg,
 					(OS_FLAGS)      0x01,
 					(OS_OPT)        OS_OPT_POST_FLAG_CLR,
+					(RTOS_ERR *)	&err);
+		OSFlagPost ((OS_FLAG_GRP *) &flg,
+					(OS_FLAGS)      0x02,
+					(OS_OPT)        OS_OPT_POST_FLAG_SET,
 					(RTOS_ERR *)	&err);
 	}
 	__enable_irq();
@@ -736,15 +779,23 @@ void GPIO_ODD_IRQHandler(void)
 	poll_PB1(&PB1_status);
 	if (PB1_status) {
 		OSFlagPost ((OS_FLAG_GRP *) &flg,
-			(OS_FLAGS)      0x02,
+			(OS_FLAGS)      0x08,
+			(OS_OPT)        OS_OPT_POST_FLAG_CLR,
+			(RTOS_ERR *)	&err);
+		OSFlagPost ((OS_FLAG_GRP *) &flg,
+			(OS_FLAGS)      0x04,
 			(OS_OPT)        OS_OPT_POST_FLAG_SET,
 			(RTOS_ERR *)	&err);
 	}
 	else {
 		OSFlagPost ((OS_FLAG_GRP *) &flg,
-					(OS_FLAGS)      0x02,
-					(OS_OPT)        OS_OPT_POST_FLAG_CLR,
-					(RTOS_ERR *)	&err);
+			(OS_FLAGS)      0x04,
+			(OS_OPT)        OS_OPT_POST_FLAG_CLR,
+			(RTOS_ERR *)	&err);
+		OSFlagPost ((OS_FLAG_GRP *) &flg,
+			(OS_FLAGS)      0x08,
+			(OS_OPT)        OS_OPT_POST_FLAG_SET,
+			(RTOS_ERR *)	&err);
 	}
 
 	__enable_irq();
